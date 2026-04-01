@@ -24,3 +24,24 @@ __pycache__/
 # Piper binary (besar, download sendiri)
 piper/
 
+# OpenClaw project (folder terpisah, tetap di-track)
+# Tapi ignore hasil output-nya
+openclaw/output/
+openclaw/data/queue.json
+openclaw/pipeline.log
+openclaw/__pycache__/
+openclaw/agents/__pycache__/
+openclaw/core/__pycache__/
+openclaw/workers/__pycache__/
+
+# Hasil output dari sistem lama
+output/
+scenes/
+*.mp4
+*.png
+*.mp3
+*.json
+
+# File sementara
+*.log
+
