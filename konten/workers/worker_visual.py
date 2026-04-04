@@ -52,7 +52,7 @@ def run(script_data: dict, run_dir: Path) -> bool:
             log.error(f"  scene_{sid} all attempts failed")
             results.append({"scene_id": sid, "ok": False, "prompt": prompt[:80]})
 
-        time.sleep(20)  # Pollinations rate limit
+        time.sleep(60)  # Pollinations rate limit
 
     with open(run_dir / "visual_log.json", "w") as f:
         json.dump({

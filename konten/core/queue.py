@@ -5,6 +5,7 @@ Simple, no external dependencies, OpenClaw-compatible structure.
 
 import json
 import uuid
+import hashlib
 from pathlib import Path
 from datetime import datetime
 from typing import Optional
@@ -14,25 +15,24 @@ from core.config import QUEUE_FILE
 
 # ── JOB SCHEMA ────────────────────────────────────────────────────────────────
 def new_job(headline: str, source: str = "", tone: int = 0, lang: str = "en") -> dict:
+    # Buat ID unik berdasarkan teks headline
+    clean_head = headline.strip().lower()
+    job_id = hashlib.md5(clean_head.encode()).hexdigest()[:8]
+    
     return {
-        "id"        : str(uuid.uuid4())[:8],
+        "id"        : job_id,   # Sekarang ID konsisten, bukan random lagi
         "headline"  : headline,
         "source"    : source,
-        "tone"      : tone,   # 0 = auto
+        "tone"      : tone,
         "lang"      : lang,
-        "status"    : "pending",   # pending | running | done | failed
-        "steps": {
-            "script" : False,
-            "visual" : False,
-            "voice"  : False,
-            "edit"   : False,
-            "qc"     : False,
-        },
+        "status"    : "pending",
+        "steps"     : {"script": False, "visual": False, "voice": False, "edit": False, "qc": False},
         "run_dir"    : "",
         "created_at" : datetime.now().isoformat(),
         "updated_at" : datetime.now().isoformat(),
         "error"      : "",
     }
+
 
 
 # ── LOAD / SAVE ───────────────────────────────────────────────────────────────
@@ -53,12 +53,21 @@ def save(jobs: list):
 
 # ── CRUD ──────────────────────────────────────────────────────────────────────
 def push(headline: str, source: str = "", tone: int = 0, lang: str = "en") -> dict:
-    """Add a new job to the queue."""
+    """Add a new job to the queue with duplicate check."""
     jobs = load()
-    job  = new_job(headline, source, tone, lang)
+    
+    # Cek apakah headline sudah ada di antrean (pending/done/failed)
+    existing = next((j for j in jobs if j["headline"].strip().lower() == headline.strip().lower()), None)
+    
+    if existing:
+        # Jika sudah ada, jangan tambah baru, kembalikan yang lama
+        return existing
+        
+    job = new_job(headline, source, tone, lang)
     jobs.append(job)
     save(jobs)
     return job
+
 
 
 def push_many(items: list) -> list:
