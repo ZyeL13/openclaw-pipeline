@@ -26,7 +26,6 @@ def get_audio_duration(audio_path: str) -> float:
 
 
 def make_scene_clip(img_path: str, duration: float, out_path: str) -> bool:
-    """PNG → video clip with Ken Burns zoom. Returns True on success."""
     zoom_speed   = 0.0005
     total_frames = int(duration * VIDEO_FPS)
 
@@ -76,24 +75,13 @@ def add_audio(video_path: str, audio_path: str, out_path: str) -> bool:
     return result.returncode == 0
 
 
-def _clean_subtitle(text: str, max_chars: int = 42) -> str:
-    """
-    Clean and wrap subtitle text for FFmpeg drawtext.
-    - Use textwrap for proper word boundaries (no mid-word splits)
-    - Max 2 lines
-    - Escape FFmpeg special chars
-    """
-    # Remove characters that break FFmpeg drawtext
+def _clean_subtitle(text: str, max_chars: int = 38) -> str:
+    """Clean and wrap subtitle for FFmpeg drawtext."""
     for ch in ["'", ":", "[", "]", "\\", "\n", "\r"]:
         text = text.replace(ch, " ")
-    # Collapse multiple spaces
     text = " ".join(text.split())
-
-    # Wrap at word boundaries
     lines = textwrap.wrap(text, width=max_chars)
-    lines = lines[:2]  # max 2 lines
-
-    return "\\n".join(lines)
+    return "\\n".join(lines[:2])
 
 
 def add_subtitles(video_path: str, scenes: list, audio_duration: float, out_path: str) -> bool:
@@ -102,23 +90,23 @@ def add_subtitles(video_path: str, scenes: list, audio_duration: float, out_path
     filters      = []
 
     for i, scene in enumerate(scenes):
-        start      = i * scene_dur
-        end        = start + scene_dur - 0.3
-        raw_text   = scene.get("text", "")
+        start    = i * scene_dur
+        end      = start + scene_dur - 0.3
+        raw_text = scene.get("text", "")
         if not raw_text:
             continue
 
-        # Clean and wrap properly
         text = _clean_subtitle(raw_text)
 
         filters.append(
             f"drawtext=text='{text}':"
             f"fontsize={SUBTITLE_FONT_SIZE}:"
             f"fontcolor={SUBTITLE_FONT_COLOR}:"
-            f"borderw=2:bordercolor=black:"           # outline — readable on any bg
-            f"box=1:boxcolor={SUBTITLE_BOX_COLOR}:boxborderw=10:"
-            f"x=(w-text_w)/2:"
-            f"y=h*0.75-text_h:"                       # 75% down — above social UI
+            f"borderw=2:bordercolor=black:"
+            f"box=1:boxcolor={SUBTITLE_BOX_COLOR}:boxborderw=12:"
+            f"x=(w-text_w)/2:"                    # centered
+            f"y=h*0.72-text_h:"                   # 72% — above social UI
+            f"line_spacing=6:"                     # breathing room between lines
             f"enable='between(t,{start:.2f},{end:.2f})'"
         )
 
@@ -134,7 +122,6 @@ def add_subtitles(video_path: str, scenes: list, audio_duration: float, out_path
 
 
 def upgrade_audio_quality(mp3_path: str, out_path: str) -> bool:
-    """Upgrade 48kbps mono → 128kbps stereo."""
     cmd = [
         "ffmpeg", "-y", "-i", mp3_path,
         "-codec:a", "libmp3lame",
