@@ -1,76 +1,49 @@
-# openclaw-pipeline 🎬
+🤖 konten-pipeline 🎬
+Autonomous AI Video Production Factory — Running 100% from Android Termux.
+$0/month. No Cloud GPU. No Laptop. No PC.
 
-Autonomous AI video pipeline — runs fully from Android Termux.  
-**$0/month. No GPU. No laptop.**
 
-## Stack
-| Step | Tool | Cost |
-|------|------|------|
-| Script gen | Groq API (LLaMA 3.3 70B) | Free |
-| Voice | Edge TTS (Microsoft Neural) | Free |
-| Images | Pollinations.ai (FLUX) | Free |
-| Video edit | FFmpeg | Free |
+🚀 The Stack (Pure Free Tier)
+| Step | Tool | Model / Engine | Cost |
+|---|---|---|---|
+| Brain | Groq API | LLaMA 3.3 70B | $0 |
+| Voice | Edge TTS | Microsoft Neural (id-ID / en-US) | $0 |
+| Visual | Pollinations | FLUX.1 [schnell] | $0 |
+| Editor | FFmpeg | Ken Burns + Auto-Subtitle | $0 |
 
-## Output
-- 9:16 vertical video (720×1280)
-- 61 seconds (YouTube Shorts monetization threshold)
-- 10 tone variations per headline
-- Ready for TikTok / IG Reels / YouTube Shorts
 
-## Setup
+📦 Features
+ * 📱 Mobile Native: Dioptimalkan khusus untuk lingkungan Termux.
+ * 📈 Short-Form Ready: Output 9:16 (720×1280) untuk TikTok, Reels, & Shorts.
+ * 🎭 10 Emotional Tones: Dari Dark Mysterious sampai Gen-Z Slang.
+ * 🛡️ Smart Deduplication: Menghindari pengolahan berita yang sama berulang kali.
 
-```bash
+
+🛠️ Project Structure
+konten/
+├── main.py             # Main Entry Point
+├── news_scanner.py     # Crypto & AI News Scraper
+├── agents/             # Brain Logic (Script, Voice, Visual, QC)
+├── core/               # Orchestrator & Configuration
+├── workers/            # Async Task Runners
+└── data/               # Logs, JSON Queues, & Cache
+
+
+⚡ Quick Start (Termux)
+# Install Dependencies
 pkg update && pkg upgrade -y
 pkg install python ffmpeg -y
-pip install requests edge-tts gtts
-```
+pip install requests edge-tts gtts python-dotenv
 
-Add ke `.env`:
-```
-GROQ_API_KEY=gsk_...
-```
+# Setup Environment
+echo "GROQ_API_KEY=your_key_here" > .env
 
-## Run
+# Run Automated Pipeline
+python konten/main.py
 
-```bash
-source .env
-
-# Full pipeline
-python run_pipeline.py "your headline here" --lang id --tone 1
-
-# English, conspiracy tone
-python run_pipeline.py "AI replaced 1 million jobs" --lang en --tone 6
-```
-
-## Tones (1-10)
-1. Dark & mysterious
-2. Urgent breaking news
-3. Sarcastic & cynical
-4. Storytelling narrative
-5. Data-driven analyst
-6. Conspiracy theory
-7. Motivational hustle
-8. Fear & warning
-9. Poetic & philosophical
-10. Casual Gen-Z slang
-
-## Output Structure
-```
-output/
-└── 20260331_105840/
-    ├── variations_output.json
-    ├── script_output.json
-    ├── voice.mp3
-    ├── final_video.mp4
-    └── scenes/
-```
-
-## Skills
-- `variation_skill.py` — 10 script variations from 1 headline
-- `pick_variation.py` — select tone → export script
-- `script_skill.py` — single script generator
-- `voice_skill.py` — Edge TTS bilingual (id/en)
-- `visual_skill.py` — Pollinations FLUX image gen
-- `edit_skill.py` — FFmpeg assembly (Ken Burns + subtitle + audio)
-- `run_pipeline.py` — one-command orchestrator
+📂 Output Preview
+Setiap proses akan menghasilkan folder unik di dalam output/:
+ * final_video.mp4: Hasil akhir siap upload.
+ * voice.mp3: Narasi hasil Edge-TTS.
+ * scenes/: Kumpulan gambar FLUX per scene.
 
