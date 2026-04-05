@@ -1,20 +1,18 @@
-// src/components/StatusCard.tsx
 interface StatusProps {
   label: string;
   value: string | number;
-  colorClass: string; // Misal: 'text-amber-400' atau 'text-cyan-400'
+  colorClass: string;
 }
 
 export default function StatusCard({ label, value, colorClass }: StatusProps) {
   return (
-    <div className="terminal-border p-4 bg-green-950/5 hover:bg-green-950/20 transition-all duration-300 group">
-      <p className="text-[10px] uppercase tracking-[0.2em] opacity-50 text-white group-hover:opacity-100 transition-opacity">
+    <div className="terminal-card p-3 sm:p-4 group">
+      <p className="text-[9px] uppercase tracking-[0.2em] text-[var(--text-dim)] mb-1 group-hover:text-[var(--text-main)] transition-colors">
         {label}
       </p>
-      <p className={`text-2xl font-bold mt-1 ${colorClass} tracking-tighter`}>
+      <p className={`text-xl sm:text-2xl font-bold tracking-tighter ${colorClass}`}>
         {value}
       </p>
     </div>
   );
 }
-
