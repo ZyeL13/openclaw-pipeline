@@ -1,0 +1,26 @@
+{
+  "generated_at": "2026-04-05T10:00:41.823931",
+  "total_videos_analyzed": 1,
+  "avg_overall_score": 8,
+  "score_trend": "stable",
+  "recurring_issues": [],
+  "best_practices": [
+    "fix Gemini 429 errors to improve video quality"
+  ],
+  "script_instructions": [
+    "ensure pacing is well-balanced to engage the audience"
+  ],
+  "avoid": [
+    "short durations that fall below the target length"
+  ],
+  "top_performing": {
+    "run_id": "20260405_090044_151dcce3",
+    "score": 8,
+    "what_worked": "cold and precise tone of 'the auditor' character"
+  },
+  "worst_performing": {
+    "run_id": "20260405_090044_151dcce3",
+    "score": 8,
+    "what_failed": "pacing could be improved and Gemini 429 error occurred"
+  }
+}

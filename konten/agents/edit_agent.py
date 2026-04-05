@@ -3,6 +3,7 @@ agents/edit_agent.py — Pure FFmpeg video assembly logic.
 No file I/O decisions. No logging.
 """
 
+import re
 import textwrap
 import subprocess
 from pathlib import Path
@@ -75,11 +76,42 @@ def add_audio(video_path: str, audio_path: str, out_path: str) -> bool:
     return result.returncode == 0
 
 
-def _clean_subtitle(text: str, max_chars: int = 38) -> str:
-    """Clean and wrap subtitle for FFmpeg drawtext."""
+def _clean_subtitle(text: str, max_chars: int = 24) -> str:
+    """
+    Clean and wrap subtitle text for FFmpeg drawtext.
+    max_chars=24 — safe limit for 720px frame at fontsize 28.
+    """
+    # Step 1: Remove non-standard chars early
+    text = re.sub(r'[^\w\s,.\-!?]', ' ', text)
+
+    # Step 2: Fix CamelCase stuck words: "likeTectonic" → "like Tectonic"
+    text = re.sub(r'([a-z])([A-Z])', r'\1 \2', text)
+
+    # Step 3: Fix number + letter: "4732years" → "4732 years"
+    text = re.sub(r'(\d)([a-zA-Z])', r'\1 \2', text)
+    text = re.sub(r'([a-zA-Z])(\d)', r'\1 \2', text)
+
+    # Step 4: Fix common words stuck to next word
+    # "nodesnare" → "nodes are", "ofntransactions" → "of transactions"
+    stuck_words = [
+        "are", "is", "of", "on", "in", "the", "and", "but",
+        "for", "to", "at", "by", "or", "not", "its", "has",
+        "was", "been", "each", "this", "that", "with", "from"
+    ]
+    for word in stuck_words:
+        # word stuck at end: "nodes" + "are" → "nodes are"
+        text = re.sub(rf'([a-z])({word})\b', rf'\1 \2', text)
+        # word stuck at start: "of" + "ntransactions" → handled by below
+        text = re.sub(rf'\b({word})([a-z])', rf'\1 \2', text)
+
+    # Step 5: Remove FFmpeg drawtext special chars
     for ch in ["'", ":", "[", "]", "\\", "\n", "\r"]:
         text = text.replace(ch, " ")
+
+    # Step 6: Collapse multiple spaces
     text = " ".join(text.split())
+
+    # Step 7: Wrap at max_chars — word boundary only, max 2 lines
     lines = textwrap.wrap(text, width=max_chars)
     return "\\n".join(lines[:2])
 
@@ -104,9 +136,9 @@ def add_subtitles(video_path: str, scenes: list, audio_duration: float, out_path
             f"fontcolor={SUBTITLE_FONT_COLOR}:"
             f"borderw=2:bordercolor=black:"
             f"box=1:boxcolor={SUBTITLE_BOX_COLOR}:boxborderw=12:"
-            f"x=(w-text_w)/2:"                    # centered
-            f"y=h*0.72-text_h:"                   # 72% — above social UI
-            f"line_spacing=6:"                     # breathing room between lines
+            f"x=max(20\\,(w-text_w)/2):"    # centered, min 20px margin
+            f"y=h*0.72-text_h:"
+            f"line_spacing=6:"
             f"enable='between(t,{start:.2f},{end:.2f})'"
         )
 

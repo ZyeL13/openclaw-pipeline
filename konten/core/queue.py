@@ -4,7 +4,6 @@ Simple, no external dependencies, OpenClaw-compatible structure.
 """
 
 import json
-import uuid
 import hashlib
 from pathlib import Path
 from datetime import datetime
@@ -15,24 +14,28 @@ from core.config import QUEUE_FILE
 
 # ── JOB SCHEMA ────────────────────────────────────────────────────────────────
 def new_job(headline: str, source: str = "", tone: int = 0, lang: str = "en") -> dict:
-    # Buat ID unik berdasarkan teks headline
-    clean_head = headline.strip().lower()
-    job_id = hashlib.md5(clean_head.encode()).hexdigest()[:8]
-    
+    # ID from headline hash — prevents duplicate IDs for same headline
+    job_id = hashlib.md5(headline.strip().lower().encode()).hexdigest()[:8]
     return {
-        "id"        : job_id,   # Sekarang ID konsisten, bukan random lagi
-        "headline"  : headline,
-        "source"    : source,
-        "tone"      : tone,
-        "lang"      : lang,
-        "status"    : "pending",
-        "steps"     : {"script": False, "visual": False, "voice": False, "edit": False, "qc": False},
+        "id"          : job_id,
+        "headline"    : headline,
+        "source"      : source,
+        "tone"        : tone,
+        "lang"        : lang,
+        "status"      : "pending",
+        "retry_count" : 0,
+        "steps": {
+            "script" : False,
+            "visual" : False,
+            "voice"  : False,
+            "edit"   : False,
+            "qc"     : False,
+        },
         "run_dir"    : "",
         "created_at" : datetime.now().isoformat(),
         "updated_at" : datetime.now().isoformat(),
         "error"      : "",
     }
-
 
 
 # ── LOAD / SAVE ───────────────────────────────────────────────────────────────
@@ -53,29 +56,19 @@ def save(jobs: list):
 
 # ── CRUD ──────────────────────────────────────────────────────────────────────
 def push(headline: str, source: str = "", tone: int = 0, lang: str = "en") -> dict:
-    """Add a new job to the queue with duplicate check."""
-    jobs = load()
-    
-    # Cek apakah headline sudah ada di antrean (pending/done/failed)
-    existing = next((j for j in jobs if j["headline"].strip().lower() == headline.strip().lower()), None)
-    
+    """Add job to queue. Skips if headline already exists."""
+    jobs     = load()
+    existing = next((j for j in jobs if j["headline"] == headline), None)
     if existing:
-        # Jika sudah ada, jangan tambah baru, kembalikan yang lama
         return existing
-        
     job = new_job(headline, source, tone, lang)
     jobs.append(job)
     save(jobs)
     return job
 
 
-
 def push_many(items: list) -> list:
-    """
-    Bulk push from news_scanner output.
-    items: list of dicts with 'headline', 'source', optional 'relevance'
-    Skips headlines already in queue (dedup by headline text).
-    """
+    """Bulk push. Skips duplicates by headline text."""
     jobs     = load()
     existing = {j["headline"] for j in jobs}
     added    = []
@@ -123,7 +116,6 @@ def update(job_id: str, **kwargs):
 
 
 def mark_step(job_id: str, step: str, success: bool = True):
-    """Mark a pipeline step as done or failed."""
     update(job_id, steps={step: success})
 
 
@@ -144,9 +136,10 @@ def pending_count() -> int:
 
 
 def summary() -> dict:
-    jobs = load()
+    jobs   = load()
     counts = {"pending": 0, "running": 0, "done": 0, "failed": 0}
     for j in jobs:
         s = j.get("status", "pending")
         counts[s] = counts.get(s, 0) + 1
     return counts
+

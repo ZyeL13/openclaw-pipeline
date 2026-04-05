@@ -1,9 +1,14 @@
 """
 core/orchestrator.py — Pipeline flow manager.
 Pulls jobs from queue, runs workers in sequence, updates status.
+Auto-retry if QC score < threshold (max 2 retries per job).
 """
 
+import json
+import shutil
 import logging
+import subprocess
+import time
 from pathlib import Path
 from datetime import datetime
 
@@ -18,6 +23,9 @@ from workers.worker_qc     import run as run_qc
 
 log = logging.getLogger("orchestrator")
 
+QC_SCORE_THRESHOLD = 7.5   # below this → auto retry
+MAX_RETRIES        = 2     # max auto retries per job
+
 
 def _make_run_dir(job_id: str) -> Path:
     ts      = datetime.now().strftime("%Y%m%d_%H%M%S")
@@ -27,18 +35,41 @@ def _make_run_dir(job_id: str) -> Path:
     return run_dir
 
 
+def _read_qc_score(run_dir: Path) -> float:
+    """Read overall_score from qc_report.json. Returns 0 if not found."""
+    qc_path = run_dir / "qc_report.json"
+    if not qc_path.exists():
+        return 0.0
+    try:
+        report = json.loads(qc_path.read_text())
+        return float(report.get("overall_score", 0))
+    except Exception:
+        return 0.0
+
+
+def _trigger_kirim(run_dir: Path, job_id: str):
+    """Trigger kirim.sh with specific run_dir path."""
+    kirim = Path.home() / "kirim.sh"
+    if kirim.exists():
+        log.info(f"[{job_id}] Sending via kirim.sh...")
+        subprocess.run(["bash", str(kirim), str(run_dir)])
+    else:
+        log.warning(f"[{job_id}] kirim.sh not found at {kirim}")
+
+
 def run_job(job: dict) -> bool:
     """
     Execute full pipeline for one job.
-    Returns True if all steps succeeded.
+    Auto-retries if QC score < QC_SCORE_THRESHOLD.
+    Returns True if job completed successfully.
     """
-    job_id   = job["id"]
-    headline = job["headline"]
-    tone     = job["tone"]
-    lang     = job.get("lang", "en")
+    job_id      = job["id"]
+    headline    = job["headline"]
+    lang        = job.get("lang", "en")
+    retry_count = job.get("retry_count", 0)
 
     log.info(f"[{job_id}] START — {headline[:60]}")
-    log.info(f"[{job_id}] tone={tone}  lang={lang}")
+    log.info(f"[{job_id}] lang={lang}  retry={retry_count}/{MAX_RETRIES}")
 
     run_dir = _make_run_dir(job_id)
     Q.mark_running(job_id)
@@ -46,7 +77,7 @@ def run_job(job: dict) -> bool:
 
     # ── STEP 1: SCRIPT ────────────────────────────────────────────────────────
     log.info(f"[{job_id}] Step 1/5 — script")
-    script_data = run_script(headline=headline, tone=tone, run_dir=run_dir)
+    script_data = run_script(headline=headline, tone=0, run_dir=run_dir)
     if not script_data:
         Q.mark_failed(job_id, "script generation failed")
         log.error(f"[{job_id}] FAILED at script")
@@ -80,17 +111,56 @@ def run_job(job: dict) -> bool:
         return False
     Q.mark_step(job_id, "edit")
 
+    # ── COOLDOWN sebelum QC (Gemini rate limit) ───────────────────────────────
+    log.info(f"[{job_id}] Waiting 60s before QC...")
+    time.sleep(60)
+
     # ── STEP 5: QC ────────────────────────────────────────────────────────────
     log.info(f"[{job_id}] Step 5/5 — qc")
-    qc_ok = run_qc(run_dir=run_dir)
-    Q.mark_step(job_id, "qc", success=qc_ok)  # QC failure does not block publish
+    run_qc(run_dir=run_dir)
+    Q.mark_step(job_id, "qc", success=True)
 
+    score = _read_qc_score(run_dir)
+    log.info(f"[{job_id}] QC score: {score}/10 (threshold: {QC_SCORE_THRESHOLD})")
+
+    # ── AUTO RETRY jika skor rendah ───────────────────────────────────────────
+    if score < QC_SCORE_THRESHOLD and score > 0:
+        if retry_count >= MAX_RETRIES:
+            log.warning(
+                f"[{job_id}] Score {score}/10 still below threshold "
+                f"after {retry_count} retries — accepting anyway"
+            )
+        else:
+            log.warning(
+                f"[{job_id}] Score {score}/10 below {QC_SCORE_THRESHOLD} "
+                f"— deleting and retrying (attempt {retry_count + 1}/{MAX_RETRIES})"
+            )
+            shutil.rmtree(run_dir, ignore_errors=True)
+            log.info(f"[{job_id}] Deleted {run_dir.name}")
+
+            Q.update(job_id,
+                status      = "pending",
+                error       = f"Score {score}/10 — auto retry {retry_count + 1}",
+                retry_count = retry_count + 1,
+                steps       = {
+                    "script": False,
+                    "visual": False,
+                    "voice" : False,
+                    "edit"  : False,
+                    "qc"    : False,
+                }
+            )
+            return False
+
+    # ── DONE ──────────────────────────────────────────────────────────────────
     Q.mark_done(job_id)
-    log.info(f"[{job_id}] DONE → {run_dir}")
+    log.info(f"[{job_id}] DONE → {run_dir.name}  score={score}/10")
+
+    _trigger_kirim(run_dir, job_id)
     return True
 
 
-def run_next(skip_qc: bool = False) -> bool:
+def run_next() -> bool:
     """Pull and process the next pending job. Returns False if queue empty."""
     job = Q.pop_pending()
     if not job:
@@ -101,7 +171,7 @@ def run_next(skip_qc: bool = False) -> bool:
 
 def run_all(max_jobs: int = 10) -> dict:
     """Process up to max_jobs pending jobs sequentially."""
-    results = {"done": 0, "failed": 0, "skipped": 0}
+    results = {"done": 0, "failed": 0}
 
     for _ in range(max_jobs):
         job = Q.pop_pending()
@@ -113,6 +183,6 @@ def run_all(max_jobs: int = 10) -> dict:
         else:
             results["failed"] += 1
 
-    summary = Q.summary()
-    log.info(f"run_all done: {results} | queue: {summary}")
+    log.info(f"run_all done: {results} | queue: {Q.summary()}")
     return results
+

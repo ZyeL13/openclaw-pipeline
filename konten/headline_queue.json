@@ -5,43 +5,43 @@
     "link": "https://www.technologyreview.com/2026/03/31/1134762/shifting-to-ai-model-customization-is-an-architectural-imperative/",
     "desc": "In the early days of large language models (LLMs), we grew accustomed to massive 10x jumps in reasoning and coding capability with every new model iteration. Today, those jumps have flattened into incremental gains. The exception is domain-specialized intelligence, where true step-function improvements are still the norm. When a model is fused with an organization’s&#8230;",
     "relevance": 3,
-    "scanned_at": "2026-04-04T20:43:03.844360",
+    "scanned_at": "2026-04-05T11:01:55.600126",
     "used": false
   },
   {
-    "headline": "The Download: AI health tools and the Pentagon’s Anthropic culture war",
-    "source": "MIT Tech Review",
-    "link": "https://www.technologyreview.com/2026/03/31/1134934/the-download-testing-ai-health-tools-pentagon-anthropic-culture-war-backfires/",
-    "desc": "This is today&#8217;s edition of The Download, our weekday newsletter that provides a daily dose of what&#8217;s going on in the world of technology. There are more AI health tools than ever—but how well do they work?&#160; In the last few months alone, Microsoft, Amazon, and OpenAI have all launched medical chatbots.&#160; There’s&#160;a clear demand&#8230;",
-    "relevance": 2,
-    "scanned_at": "2026-04-04T20:43:03.844447",
-    "used": false
-  },
-  {
-    "headline": "AI benchmarks are broken. Here’s what we need instead.",
-    "source": "MIT Tech Review",
-    "link": "https://www.technologyreview.com/2026/03/31/1134833/ai-benchmarks-are-broken-heres-what-we-need-instead/",
-    "desc": "For decades, artificial intelligence has been evaluated through the question of whether machines outperform humans. From chess to advanced math, from coding to essay writing, the performance of AI models and applications is tested against that of individual humans completing tasks.&#160; This framing is seductive: An AI vs. human comparison on isolated problems with clear&#8230;",
-    "relevance": 2,
-    "scanned_at": "2026-04-04T20:43:03.844534",
-    "used": false
-  },
-  {
-    "headline": "People would rather have an Amazon warehouse in their backyard than a data center",
+    "headline": "Anthropic is having a moment in the private markets; SpaceX could spoil the party",
     "source": "TechCrunch AI",
-    "link": "https://techcrunch.com/2026/04/03/people-would-rather-have-an-amazon-warehouse-in-their-backyard-than-a-data-center/",
-    "desc": "A new poll shows that the debate over data centers is far from settled.",
-    "relevance": 1,
-    "scanned_at": "2026-04-04T20:43:03.116167",
+    "link": "https://techcrunch.com/2026/04/03/anthropic-is-having-a-moment-in-the-private-markets-spacex-could-spoil-the-party/",
+    "desc": "Glen Anderson, president of Rainmaker Securities, says the secondary market for private shares has never been more active — with Anthropic the hottest trade around, OpenAI losing ground, and SpaceX's looming IPO poised to reshape the landscape for everyone.",
+    "relevance": 2,
+    "scanned_at": "2026-04-05T11:01:54.762184",
     "used": false
   },
   {
-    "headline": "OpenAI acquires TBPN, the buzzy founder-led business talk show",
+    "headline": "Anthropic buys biotech startup Coefficient Bio in $400M deal: Reports",
     "source": "TechCrunch AI",
-    "link": "https://techcrunch.com/2026/04/02/openai-acquires-tbpn-the-buzzy-founder-led-business-talk-show/",
-    "desc": "TBPN, Silicon Valley's cult-favorite tech podcast, will operate independently, even as it's overseen by chief political operative Chris Lehane.",
+    "link": "https://techcrunch.com/2026/04/03/anthropic-buys-biotech-startup-coefficient-bio-in-400m-deal-reports/",
+    "desc": "Anthropic has purchased the stealth biotech AI startup Coefficient Bio in a $400 million stock deal, according to The Information and Eric Newcomer.",
+    "relevance": 2,
+    "scanned_at": "2026-04-05T11:01:54.762366",
+    "used": false
+  },
+  {
+    "headline": "OpenAI executive shuffle includes new role for COO Brad Lightcap to lead ‘special projects’",
+    "source": "TechCrunch AI",
+    "link": "https://techcrunch.com/2026/04/03/openai-executive-shuffle-new-roles-coo-brad-lightcap-fidji-simo-kate-rouch/",
+    "desc": "In addition to Lightcap's new role, OpenAI CMO Kate Rouch will be stepping away from the company to focus on cancer recovery, with a plan to return when her health allows.",
     "relevance": 1,
-    "scanned_at": "2026-04-04T20:43:03.116292",
+    "scanned_at": "2026-04-05T11:01:54.762301",
+    "used": false
+  },
+  {
+    "headline": "Anthropic ramps up its political activities with a new PAC",
+    "source": "TechCrunch AI",
+    "link": "https://techcrunch.com/2026/04/03/anthropic-ramps-up-its-political-activities-with-a-new-pac/",
+    "desc": "With the midterms right around the corner, the new group is positioned to back candidates who support the AI company's policy agenda.",
+    "relevance": 1,
+    "scanned_at": "2026-04-05T11:01:54.762420",
     "used": false
   }
 ]

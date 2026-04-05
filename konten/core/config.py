@@ -32,11 +32,11 @@ TELEGRAM_BOT_TOKEN = os.environ.get("TELEGRAM_BOT_TOKEN", "")
 TELEGRAM_CHAT_ID   = os.environ.get("TELEGRAM_CHAT_ID", "")
 
 # ── API URLS ──────────────────────────────────────────────────────────────────
-GROQ_URL   = "https://api.groq.com/openai/v1"
+GROQ_URL   = "http://127.0.0.1:8402/v1"
 GEMINI_URL = "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent"
 
 # ── MODELS ────────────────────────────────────────────────────────────────────
-GROQ_MODEL         = "llama-3.3-70b-versatile"
+GROQ_MODEL         = "free/deepseek-v3.2"
 GROQ_WHISPER_MODEL = "whisper-large-v3-turbo"
 
 # ── SCRIPT ────────────────────────────────────────────────────────────────────
@@ -74,7 +74,7 @@ SUBTITLE_BOX_COLOR  = "black@0.6"
 
 # ── QC ────────────────────────────────────────────────────────────────────────
 QC_N_FRAMES    = 2
-QC_FRAME_DELAY = 15
+QC_FRAME_DELAY = 60
 
 
 def validate():

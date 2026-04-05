@@ -7,6 +7,8 @@ Single locked character: "the auditor"
 import json
 import logging
 import requests
+import random
+from pathlib import Path
 from core.config import GROQ_API_KEY, GROQ_URL, GROQ_MODEL, SCRIPT_TEMPERATURE
 
 log = logging.getLogger("agent.script")
@@ -37,13 +39,13 @@ STYLE RULES:
   NOT "person looking at phone"
   BUT "fluorescent light on an empty trading desk, 3am, one coffee cup"
 
-WORD COUNT (non-negotiable — this is spoken narration at 140 wpm):
-  Scene 1 (15s) = 30-38 words. No more, no less.
-  Scene 2 (15s) = 30-38 words. No more, no less.
-  Scene 3 (16s) = 32-40 words. No more, no less.
-  Scene 4 (15s) = 30-38 words. No more, no less.
-  Total target  = 122-154 words across all scenes.
-  Count each scene. If over 38, cut. If under 30, expand.
+WORD COUNT (non-negotiable — this is spoken narration at 80 wpm):
+  Scene 1 (15s) = 25-32 words. No more, no less.
+  Scene 2 (15s) = 25-32 words. No more, no less.
+  Scene 3 (16s) = 28-35 words. No more, no less.
+  Scene 4 (15s) = 25-32 words. No more, no less.
+  Total         = 103-131 words
+  Count each scene. If over 25, cut. If under 20, expand.
 
 CTA: sounds like closing a case file. Max 15 words. Never "follow for more."
 """
@@ -74,19 +76,40 @@ JSON FORMAT:
 
 def generate_script(headline: str) -> dict | None:
     """Generate one script for a headline. Returns script dict or None."""
+    
+    # ── LOGIKA MEMORY LOOP (TAMBAHKAN DI SINI) ──────────────────────
+    practices_file = Path(__file__).parent.parent / "memory" / "best_practices.json"
+    practices_context = ""
+    
+    if practices_file.exists():
+        try:
+            p = json.loads(practices_file.read_text())
+            avoid = p.get("avoid", [])
+            tips  = p.get("script_instructions", [])
+            if avoid or tips:
+                avoid_str = str(avoid[:3])   # max 3 items
+                tips_str  = str(tips[:3])    # max 3 items
+                practices_context = f"\nLEARNED FROM PAST VIDEOS:\nAvoid: {avoid_str}\nDo: {tips_str}\n"
+        except Exception as e:
+            log.warning(f"Failed to load best_practices: {e}")
+    # ────────────────────────────────────────────────────────────────
+
     payload = {
         "model"      : GROQ_MODEL,
         "max_tokens" : SCRIPT_MAX_TOKENS,
         "temperature": SCRIPT_TEMPERATURE,
+        "seed"       : random.randint(1, 999999),   # ← tambah ini
         "messages"   : [
             {"role": "system", "content": SYSTEM_PROMPT},
             {"role": "user", "content": (
                 f"Headline: {headline}\n\n"
+                f"{practices_context}"  # <--- Masukkan konteks memori di sini
                 f"Write the script as the auditor.\n"
-                f"MINIMUM 35 words per scene — count before submitting."
+                f"MINIMUM 25 words per scene, MAXIMUM 32 words — count before submitting."
             )}
         ]
     }
+    
 
     try:
         resp = requests.post(
