@@ -44,14 +44,19 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
       <head>
         <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
         <link rel="icon" href="/favicon.ico" sizes="any" />
+        {/* Verifikasi AdSense via meta tag — lebih reliable dari script */}
+        <meta name="google-adsense-account" content="ca-pub-5429089740484905" />
+      </head>
+      <body>
+        {children}
+        {/* Script di luar head, sebelum tutup body */}
         <Script
           async
           src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-5429089740484905"
           crossOrigin="anonymous"
           strategy="afterInteractive"
         />
-      </head>
-      <body>{children}</body>
+      </body>
     </html>
   );
 }
