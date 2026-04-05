@@ -1,0 +1,61 @@
+---
+title: "[LOG-002]: Arsitektur Multi-Agent — Otak di Balik OpenClaw"
+date: "2026-04-06"
+status: "Published"
+author: "Zyel"
+excerpt: "Mengupas tuntas bagaimana 5 agen AI bekerja sama dalam harmoni"
+---
+
+Salah satu tantangan terbesar dalam otomatisasi video adalah **koordinasi**. Banyak tools bisa generate gambar, tapi sedikit yang bisa menyatukan semuanya menjadi alur yang mulus.
+
+OpenClaw memecahkan ini dengan **arsitektur multi-agent** yang terinspirasi dari sistem operasi mikrokernel.
+
+## Lima Spesialis, Satu Tujuan
+
+| Agent | Tugas | Output |
+|-------|-------|--------|
+| **Script Agent** | Riset & generate narasi | Script `.json` |
+| **Visual Agent** | Generate prompt & gambar | Scene `.png` |
+| **Voice Agent** | Text-to-speech | Audio `.mp3` |
+| **Edit Agent** | Render & transisi | Video mentah |
+| **QC Agent** | Audit kualitas | Score + feedback |
+
+> "Setiap agent punya spesialisasi, tapi mereka semua tunduk pada orchestrator yang sama."
+
+## Belajar dari OpenClaw
+
+Yang membuat sistem ini unik adalah **feedback loop** dari QC Agent. Kalau skor di bawah threshold, sistem akan:
+1. Identifikasi masalah (durasi, pacing, visual error)
+2. Trigger ulang agent yang relevan
+3. Render ulang dengan perbaikan
+
+Ini yang disebut **self-healing pipeline** — dan ini bekerja di Termux.
+
+---
+
+## Tech Deep Dive
+
+Script Agent menggunakan **DeepSeek API** untuk generate narasi dari headline. Kenapa DeepSeek? Karena:
+
+- Biaya 90% lebih murah dari GPT-4
+- Kualitas setara untuk task reasoning
+- Rate limit lebih ramah
+
+Visual Agent default ke **Pollinations.ai** (gratis) dengan fallback ke Leonardo API kalau error.
+
+---
+
+## Yang Bisa Lo Tiru
+
+Arsitektur ini gak cuma buat video. Lo bisa terapin ke:
+
+- Bot Telegram multi-fungsi
+- Content aggregator
+- Automated testing suite
+- Social media scheduler
+
+Prinsipnya sama: **pecah masalah besar jadi tugas kecil, lalu koordinasikan.**
+
+---
+
+EOF	
