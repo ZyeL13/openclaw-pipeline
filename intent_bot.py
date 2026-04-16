@@ -14,27 +14,26 @@ import requests
 from datetime import datetime
 from pathlib import Path
 
+# ── IMPORT CONFIG dari core ───────────────────────────────────────────────────
+# Tambah path biar bisa import core
+sys.path.insert(0, str(Path(__file__).parent))
+from core.config import LLM_API_KEY, LLM_BASE, LLM_MODEL, TIMEOUT, QUEUE_FILE
+
 # ── CONFIG ────────────────────────────────────────────────────────────────────
-# Pindahin ke sini biar gak ribet import dari core
-GROQ_API_KEY = os.environ.get("GROQ_API_KEY", "")
-GROQ_BASE    = "https://api.groq.com/openai/v1"
-GROQ_MODEL   = os.environ.get("GROQ_MODEL", "llama-3.3-70b-versatile")
+DEBUG = "--debug" in sys.argv
 
-QUEUE_FILE = Path("data/queue.json")
-TIMEOUT    = 60
-DEBUG      = "--debug" in sys.argv
-
-# ── GUARD: Cek API Key di awal ─────────────────────────────────────────────────
+# ── GUARD: Cek API Key ────────────────────────────────────────────────────────
 def check_api_key():
-    if not GROQ_API_KEY:
+    if not LLM_API_KEY:
         print("[ERROR] GROQ_API_KEY belum di-set.")
         print("        Jalankan: export GROQ_API_KEY='gsk_xxxxx'")
+        print("        Atau tambahkan ke ~/.bashrc")
         sys.exit(1)
 
-# ── LLM (Groq) ────────────────────────────────────────────────────────────────
+# ── LLM ───────────────────────────────────────────────────────────────────────
 def llm_call(system: str, user: str, max_tokens: int = 300) -> str:
     payload = {
-        "model":       GROQ_MODEL,
+        "model":       LLM_MODEL,
         "max_tokens":  max_tokens,
         "temperature": 0.7,
         "messages": [
@@ -43,13 +42,13 @@ def llm_call(system: str, user: str, max_tokens: int = 300) -> str:
         ]
     }
     headers = {
-        "Authorization": f"Bearer {GROQ_API_KEY}",
+        "Authorization": f"Bearer {LLM_API_KEY}",
         "Content-Type": "application/json"
     }
     
     try:
         r = requests.post(
-            f"{GROQ_BASE}/chat/completions",
+            f"{LLM_BASE}/chat/completions",
             headers=headers,
             json=payload,
             timeout=TIMEOUT
@@ -61,10 +60,10 @@ def llm_call(system: str, user: str, max_tokens: int = 300) -> str:
         print("[ERROR] Gagal konek ke Groq API. Cek internet.")
         sys.exit(1)
     except requests.exceptions.Timeout:
-        print("[ERROR] LLM timeout (>60s).")
+        print(f"[ERROR] LLM timeout (> {TIMEOUT}s).")
         sys.exit(1)
     except requests.exceptions.HTTPError as e:
-        if r.status_code == 401:
+        if hasattr(r, 'status_code') and r.status_code == 401:
             print("[ERROR] API Key tidak valid. Cek GROQ_API_KEY-mu.")
         else:
             print(f"[ERROR] HTTP Error: {e}")
@@ -74,20 +73,19 @@ def llm_call(system: str, user: str, max_tokens: int = 300) -> str:
         sys.exit(1)
 
 # ── SYSTEM PROMPTS ────────────────────────────────────────────────────────────
-SYS_OPTIMIZER = """\
-You are a production prompt compiler for an AI video pipeline.
-Translate the creative brief into a compact machine-readable instruction string.
+SYS_CLARIFIER = """\
+You are a content brief assistant for OpenClaw — an autonomous AI video pipeline.
+Pipeline output: short-form video (TikTok/Reels/Shorts), persona: THE AUDITOR (cold, analytical, dark humor).
 
-Rules:
-- Format: [KEY:VALUE][KEY:VALUE]...
-- All VALUES must be UPPERCASE
-- Output on a SINGLE LINE, max 100 tokens
-- Zero prose, zero explanation
-- Required keys: [TASK:VIDEO_GEN][STYLE:THE_AUDITOR][TONE:COLD][TOPIC:VALUE][KEY_ELEMENTS:ITEM1,ITEM2,ITEM3][DURATION:15S][LANG:VALUE]
-- KEY_ELEMENTS: Max 3 punchy keywords, comma-separated, no spaces
-- Output ONLY the instruction string, nothing else\
+Given a user's initial idea, generate EXACTLY 2-3 sharp clarification questions.
+Goal: pin down tone, key angle/focus, target language (ID/EN), emotional hook.
+Do NOT ask obvious questions. Be surgical.
+
+Output format — plain numbered list, zero preamble:
+1. ...
+2. ...
+3. ...\
 """
-
 
 SYS_SUMMARIZER = """\
 You are a content brief compiler for a video production pipeline.
@@ -115,6 +113,7 @@ Rules:
 
 # ── QUEUE ─────────────────────────────────────────────────────────────────────
 def push_to_queue(job: dict) -> None:
+    """Push job to queue file (menggunakan QUEUE_FILE dari config)"""
     QUEUE_FILE.parent.mkdir(parents=True, exist_ok=True)
     queue = []
     if QUEUE_FILE.exists():
@@ -132,7 +131,7 @@ def divider():
     print("─" * 48)
 
 def thinking():
-    print("\n[...]\n")
+    print("\n🤔 ...\n")
 
 # ── STATE MACHINE ─────────────────────────────────────────────────────────────
 def run() -> None:
@@ -140,13 +139,13 @@ def run() -> None:
     check_api_key()
     
     print("\n" + "=" * 48)
-    print("  OPENCLAW / Intent Bot (Groq)")
+    print("  🦞 OPENCLAW / Intent Bot")
     print("  'quit' untuk keluar kapan aja")
     print("=" * 48 + "\n")
 
     # STATE 1 — Initial prompt
     divider()
-    user_prompt = input("Konten apa?\n> ").strip()
+    user_prompt = input("📝 Konten apa?\n> ").strip()
     if user_prompt.lower() == "quit" or not user_prompt:
         sys.exit(0)
 
@@ -154,13 +153,14 @@ def run() -> None:
 
     # STATE 2 — Clarification questions
     divider()
+    print("📋 Pertanyaan klarifikasi:\n")
     questions = llm_call(SYS_CLARIFIER, f"User idea: {user_prompt}")
     print(questions)
     print()
 
     # STATE 3 — User answers
     divider()
-    answers = input("Jawaban:\n> ").strip()
+    answers = input("✏️ Jawaban:\n> ").strip()
     if answers.lower() == "quit" or not answers:
         sys.exit(0)
 
@@ -175,7 +175,7 @@ def run() -> None:
     brief_human = llm_call(SYS_SUMMARIZER, summary_ctx, max_tokens=150)
 
     divider()
-    print("Brief:\n")
+    print("📄 Brief:\n")
     print(brief_human)
     print()
 
@@ -191,17 +191,18 @@ def run() -> None:
 
     if DEBUG:
         divider()
-        print(f"[DEBUG] Technical prompt:\n{brief_technical}\n")
+        print(f"🔧 [DEBUG] Technical prompt:\n{brief_technical}\n")
 
     # STATE 5 — Confirm
     divider()
-    confirm = input('Gas? (gas / batal)\n> ').strip().lower()
+    confirm = input('🚀 Gas? (gas / batal)\n> ').strip().lower()
 
     if confirm != "gas":
-        print("\n[BATAL] Pipeline tidak dijalankan.")
+        print("\n❌ BATAL — Pipeline tidak dijalankan.")
         sys.exit(0)
 
     # Build job spec
+    from core.config import VIDEO_DURATION
     job = {
         "id":               str(uuid.uuid4()),
         "created_at":       datetime.utcnow().isoformat(),
@@ -223,8 +224,8 @@ def run() -> None:
     push_to_queue(job)
 
     short_id = job["id"][:8]
-    print(f"\n[OK] Job {short_id}... masuk queue.")
-    print(f"     Jalankan: python main.py --run-queue\n")
+    print(f"\n✅ [OK] Job {short_id}... masuk queue.")
+    print(f"   Jalankan: python main.py --run-queue\n")
 
 
 if __name__ == "__main__":

@@ -20,9 +20,9 @@ CHAIN_LOG          = MEMORY_DIR / "chain.log"
 # ── LLM (Groq) ────────────────────────────────────────────────────────────────
 LLM_BASE    = os.environ.get("GROQ_BASE",  "https://api.groq.com/openai/v1")
 LLM_MODEL   = os.environ.get("GROQ_MODEL", "llama-3.3-70b-versatile")
-LLM_API_KEY = os.environ.get("GROQ_API_KEY", "")
+LLM_API_KEY = os.environ.get("GROQ_API_KEY")
 LLM_TIMEOUT = 60
-
+TIMEOUT = 60
 # ── VISION QC ─────────────────────────────────────────────────────────────────
 VISION_MODEL = "llama-3.2-11b-vision-preview"  # Groq vision model
 
@@ -39,6 +39,9 @@ VIDEO_FPS      = 30
 # ── QC ────────────────────────────────────────────────────────────────────────
 QC_PASS_SCORE  = 7.5
 QC_MAX_RETRY   = 2
+QC_N_FRAMES    = 2
+QC_FRAME_DELAY = 5       # seconds between Groq vision calls (free tier safe)
+TARGET_DURATION = VIDEO_DURATION
 
 # ── PIPELINE ──────────────────────────────────────────────────────────────────
 PIPELINE_STEPS = ["script", "visual", "voice", "qc", "edit"]
