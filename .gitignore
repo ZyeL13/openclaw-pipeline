@@ -1,64 +1,64 @@
-# --- Frontend (Dashboard) ---
-dashboard/node_modules/
-dashboard/.next/
-dashboard/out/
-dashboard/build/
-dashboard/.vercel/
-dashboard/*.log
-
-# --- Python & System Garbage ---
+# Python
 __pycache__/
-**/*.pyc
-**/*.pyo
-**/*.pyd
-.env
-.DS_Store
-.venv/
-venv/
-pip-log.txt
-
-# --- OpenClaw Heavy Assets (Ignore folder, not files) ---
-# Kita ignore hasil render yang berat agar repo tidak bengkak
-**/output/*/scenes/
-**/output/**/*.mp4
-**/output/**/*.png
-**/output/**/*.mp3
-**/output/**/*.wav
-
-# --- Specific Heavy Binaries ---
-piper/
-
-# --- Keep Data & Configs (PENTING) ---
-# Jangan ignore .json secara global agar package.json terdeteksi
-# Kita hanya ignore file output/log sementara yang tidak perlu di-dashboard
-variations_output.json
-*_log.json
-
-konten/client_secrets.json
-
-# Dependencies
-node_modules/
-.pnpm-store/
-
-# Build output
-.next/
-out/
-build/
+*.pyc
+*.pyo
+*.pyd
+.Python
+*.so
+*.egg-info/
 dist/
+build/
+*.whl
+.pytest_cache/
+.coverage
 
-# Logs
+# Output files
+output/
+*.mp4
+*.png
+*.jpg
+*.mp3
+*.wav
+*.aac
+
+# Data & logs
+data/queue.json
+data/*.json
+pipeline.log
 *.log
-npm-debug.log*
+memory/chain.log
 
 # Environment
 .env
 .env.local
-.env*.local
-
-# OS
-.DS_Store
-Thumbs.db
+.env.production
+.venv
+venv/
+secrets.py
 
 # IDE
 .vscode/
 .idea/
+*.swp
+*.swo
+
+# OS generated
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# Termux
+.storage/
+.bash_history
+
+# Temporary
+*.tmp
+*.temp
+*.bak
+*.orig
+temp_assets/
+audio/
+
+# Database
+*.db
+*.sqlite

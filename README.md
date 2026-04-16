@@ -1,49 +1,114 @@
-🤖 konten-pipeline 🎬
-Autonomous AI Video Production Factory — Running 100% from Android Termux.
-$0/month. No Cloud GPU. No Laptop. No PC.
+```bash
+nano README.md
+```
 
+```markdown
+# AI Content Generation
 
-🚀 The Stack (Pure Free Tier)
-| Step | Tool | Model / Engine | Cost |
-|---|---|---|---|
-| Brain | Groq API | LLaMA 3.3 70B | $0 |
-| Voice | Edge TTS | Microsoft Neural (id-ID / en-US) | $0 |
-| Visual | Pollinations | FLUX.1 [schnell] | $0 |
-| Editor | FFmpeg | Ken Burns + Auto-Subtitle | $0 |
+> Autonomous video pipeline with intent bot + Groq LLM
 
+## 🚀 Quick Start
 
-📦 Features
- * 📱 Mobile Native: Dioptimalkan khusus untuk lingkungan Termux.
- * 📈 Short-Form Ready: Output 9:16 (720×1280) untuk TikTok, Reels, & Shorts.
- * 🎭 10 Emotional Tones: Dari Dark Mysterious sampai Gen-Z Slang.
- * 🛡️ Smart Deduplication: Menghindari pengolahan berita yang sama berulang kali.
+### 1. Set API Key
+```bash
+export GROQ_API_KEY="gsk_xxxxx_kamu"
+```
 
+2. Run Intent Bot
 
-🛠️ Project Structure
-konten/
-├── main.py             # Main Entry Point
-├── news_scanner.py     # Crypto & AI News Scraper
-├── agents/             # Brain Logic (Script, Voice, Visual, QC)
-├── core/               # Orchestrator & Configuration
-├── workers/            # Async Task Runners
-└── data/               # Logs, JSON Queues, & Cache
+```bash
+python intent_bot.py
+```
 
+3. Or Run Pipeline
 
-⚡ Quick Start (Termux)
-# Install Dependencies
-pkg update && pkg upgrade -y
-pkg install python ffmpeg -y
-pip install requests edge-tts gtts python-dotenv
+```bash
+python main.py              # intent bot (default)
+python main.py --scan       # news scanner mode
+python main.py --run-queue  # process queue
+```
 
-# Setup Environment
-echo "GROQ_API_KEY=your_key_here" > .env
+---
 
-# Run Automated Pipeline
-python konten/main.py
+📁 Structure
 
-📂 Output Preview
-Setiap proses akan menghasilkan folder unik di dalam output/:
- * final_video.mp4: Hasil akhir siap upload.
- * voice.mp3: Narasi hasil Edge-TTS.
- * scenes/: Kumpulan gambar FLUX per scene.
+```
+~/konten-pipeline/
+├── intent_bot.py           # Chatbot konfirmasi intent
+├── main.py                 # Entry point
+│
+├── agents/                 # AI agents
+│   ├── script_agent.py
+│   ├── visual_agent.py
+│   ├── voice_agent.py
+│   ├── qc_agent.py
+│   └── edit_agent.py
+│
+├── workers/                # Pipeline workers
+│   ├── worker_script.py
+│   ├── worker_visual.py
+│   ├── worker_voice.py
+│   ├── worker_qc.py
+│   ├── worker_edit.py
+│   └── worker_upload.py
+│
+├── core/                   # Core modules
+│   ├── config.py
+│   ├── orchestrator.py
+│   └── queue.py
+│
+└── memory/                 # Memory & logs
+    ├── best_practices.json
+    └── failed_cases.json
+```
+
+---
+
+⚙️ Config (core/config.py)
+
+Setting Value
+Duration 15 seconds
+Resolution 720x1280
+LLM Groq (llama-3.3-70b)
+Vision Groq (llama-3.2-11b-vision)
+
+---
+
+🎯 Intent Bot Flow
+
+```
+User prompt → 2-3 questions → User answers → Brief confirmation → "gas" → Queue
+```
+
+---
+
+📦 Output
+
+· Video: output/*.mp4
+· Queue: data/queue.json
+· Logs: *.log
+
+---
+
+🧹 Clean Commands
+
+```bash
+# Remove old files (already done in refactor)
+rm -f *_skill.py konten/ -rf
+```
+
+---
+
+🔧 Dependencies
+
+```bash
+pkg install openssh python ffmpeg
+pip install requests openai-whisper
+```
+
+---
+
+📄 License
+
+Internal use only — THE AUDITOR
 
