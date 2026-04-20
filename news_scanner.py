@@ -4,19 +4,16 @@ import hashlib
 import os
 import time
 import logging
-import xml.etree.ElementTree as ET
-from datetime import datetime, timedelta
-from dotenv import load_dotenv
-load_dotenv()
+from pathlib import Path
 
 # ─── CONFIG ───────────────────────────────────────────────────────────
 GROQ_API_KEY      = os.environ.get("GROQ_API_KEY", "")
 TELEGRAM_BOT_TOKEN = os.environ.get("TELEGRAM_BOT_TOKEN", "")
 TELEGRAM_CHAT_ID  = os.environ.get("TELEGRAM_CHAT_ID", "")
 
-BASE_DIR       = "/data/data/com.termux/files/home"
-SEEN_FILE      = f"{BASE_DIR}/news_seen.json"
-LOG_FILE       = f"{BASE_DIR}/news.log"
+BASE_DIR       = Path(__file__).parent
+SEEN_FILE      = BASE_DIR / "news_seen.json"
+LOG_FILE       = BASE_DIR / "news.log"
 
 MAX_POSTS      = 5
 CANDIDATE_POOL = 12

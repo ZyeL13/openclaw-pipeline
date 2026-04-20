@@ -36,6 +36,13 @@ memory/chain.log
 venv/
 secrets.py
 
+# Node.js
+node_modules/
+.next/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
 # IDE
 .vscode/
 .idea/

@@ -10,7 +10,7 @@ import subprocess
 import time
 from pathlib import Path
 from datetime import datetime
-from core import queue as Q
+from core import job_queue as core_queue
 from core.config import OUTPUT_DIR
 from workers.worker_script import run as run_script
 from workers.worker_visual import run as run_visual
@@ -64,44 +64,44 @@ def run_job(job: dict) -> bool:
     log.info(f"[{job_id}] lang={lang}  retry={retry_count}/{MAX_RETRIES}")
 
     run_dir = make_run_dir(job_id)  # Fixed: was _make_run_dir
-    Q.mark_running(job_id)
-    Q.update(job_id, run_dir=str(run_dir))
+    core_queue.mark_running(job_id)
+    core_queue.update(job_id, run_dir=str(run_dir))
 
     # ── STEP 1: SCRIPT ────────────────────────────────────────────────────────
     log.info(f"[{job_id}] Step 1/5 — script")
     script_data = run_script(headline=headline, tone=0, run_dir=run_dir)
     if not script_data:
-        Q.mark_failed(job_id, "script generation failed")
+        core_queue.mark_failed(job_id, "script generation failed")
         log.error(f"[{job_id}] FAILED at script")
         return False
-    Q.mark_step(job_id, "script")
+    core_queue.mark_step(job_id, "script")
 
     # ── STEP 2: VISUAL ────────────────────────────────────────────────────────
     log.info(f"[{job_id}] Step 2/5 — visual")
     visual_ok = run_visual(script_data=script_data, run_dir=run_dir)
     if not visual_ok:
-        Q.mark_failed(job_id, "visual generation failed")
+        core_queue.mark_failed(job_id, "visual generation failed")
         log.error(f"[{job_id}] FAILED at visual")
         return False
-    Q.mark_step(job_id, "visual")
+    core_queue.mark_step(job_id, "visual")
 
     # ── STEP 3: VOICE ─────────────────────────────────────────────────────────
     log.info(f"[{job_id}] Step 3/5 — voice")
     voice_ok = run_voice(script_data=script_data, lang=lang, run_dir=run_dir)
     if not voice_ok:
-        Q.mark_failed(job_id, "voice generation failed")
+        core_queue.mark_failed(job_id, "voice generation failed")
         log.error(f"[{job_id}] FAILED at voice")
         return False
-    Q.mark_step(job_id, "voice")
+    core_queue.mark_step(job_id, "voice")
 
     # ── STEP 4: EDIT ──────────────────────────────────────────────────────────
     log.info(f"[{job_id}] Step 4/5 — edit")
     edit_ok = run_edit(script_data=script_data, run_dir=run_dir)
     if not edit_ok:
-        Q.mark_failed(job_id, "video assembly failed")
+        core_queue.mark_failed(job_id, "video assembly failed")
         log.error(f"[{job_id}] FAILED at edit")
         return False
-    Q.mark_step(job_id, "edit")
+    core_queue.mark_step(job_id, "edit")
 
     # ── COOLDOWN sebelum QC (Gemini rate limit) ───────────────────────────────
     log.info(f"[{job_id}] Waiting 60s before QC...")
@@ -110,7 +110,7 @@ def run_job(job: dict) -> bool:
     # ── STEP 5: QC ────────────────────────────────────────────────────────────
     log.info(f"[{job_id}] Step 5/5 — qc")
     run_qc(run_dir=run_dir)
-    Q.mark_step(job_id, "qc", success=True)
+    core_queue.mark_step(job_id, "qc", success=True)
 
     score = _read_qc_score(run_dir)
     log.info(f"[{job_id}] QC score: {score}/10 (threshold: {QC_SCORE_THRESHOLD})")
@@ -130,7 +130,7 @@ def run_job(job: dict) -> bool:
             shutil.rmtree(run_dir, ignore_errors=True)
             log.info(f"[{job_id}] Deleted {run_dir.name}")
 
-            Q.update(job_id,
+            core_queue.update(job_id,
                 status      = "pending",
                 error       = f"Score {score}/10 — auto retry {retry_count + 1}",
                 retry_count = retry_count + 1,
@@ -145,14 +145,14 @@ def run_job(job: dict) -> bool:
             return False
 
     # ── DONE ──────────────────────────────────────────────────────────────────
-    Q.mark_done(job_id)
+    core_queue.mark_done(job_id)
     log.info(f"[{job_id}] DONE → {run_dir.name}  score={score}/10")
     _trigger_kirim(run_dir, job_id)
     return True
 
 def run_next() -> bool:
     """Pull and process the next pending job. Returns False if queue empty."""
-    job = Q.pop_pending()
+    job = core_queue.pop_pending()
     if not job:
         log.info("Queue empty — nothing to process")
         return False
@@ -162,7 +162,7 @@ def run_all(max_jobs: int = 10) -> dict:
     """Process up to max_jobs pending jobs sequentially."""
     results = {"done": 0, "failed": 0}
     for _ in range(max_jobs):
-        job = Q.pop_pending()
+        job = core_queue.pop_pending()
         if not job:
             break
         success = run_job(job)
@@ -171,5 +171,5 @@ def run_all(max_jobs: int = 10) -> dict:
         else:
             results["failed"] += 1
 
-    log.info(f"run_all done: {results} | queue: {Q.summary()}")
+    log.info(f"run_all done: {results} | queue: {core_queue.summary()}")
     return results

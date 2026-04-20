@@ -45,3 +45,36 @@ TARGET_DURATION = VIDEO_DURATION
 
 # ── PIPELINE ──────────────────────────────────────────────────────────────────
 PIPELINE_STEPS = ["script", "visual", "voice", "qc", "edit"]
+
+# ── BACKWARD COMPATIBILITY ALIASES ────────────────────────────────────────────
+GROQ_API_KEY = LLM_API_KEY
+GROQ_URL = LLM_BASE
+GROQ_URL_PRIMARY = LLM_BASE
+GROQ_URL_FALLBACK = LLM_BASE  # Same as primary for now
+GROQ_MODEL_PRIMARY = LLM_MODEL
+GROQ_MODEL_FALLBACKS = [LLM_MODEL]
+
+# ── SCRIPT ────────────────────────────────────────────────────────────────────
+SCRIPT_TEMPERATURE = 0.7
+SCRIPT_MIN_WORDS_TOTAL = 100
+SCRIPT_MIN_WORDS_SCENE = 20
+
+# ── VISUAL ────────────────────────────────────────────────────────────────────
+IMAGE_WIDTH = VIDEO_WIDTH
+IMAGE_HEIGHT = VIDEO_HEIGHT
+IMAGE_MODEL = "flux"  # Pollinations model
+STYLE_PREFIX = "cinematic, professional photography, "
+AUDITOR_VISUAL_STYLE = "cold institutional aesthetic, fluorescent lighting, precise composition"
+
+# ── VOICE ─────────────────────────────────────────────────────────────────────
+TTS_VOICE = "id-ID-ArdiNeural"  # Indonesian voice for Edge TTS
+TTS_RATE = 1.0
+TTS_VOLUME = 1.0
+
+# ── EDIT ──────────────────────────────────────────────────────────────────────
+SUBTITLE_FONT_SIZE = 24
+SUBTITLE_FONT_COLOR = "white"
+SUBTITLE_BOX_COLOR = "black"
+CHAR_SCALE = 0.8
+CHAR_OPACITY = 0.7
+CHAR_POSITION = "bottom-right"
