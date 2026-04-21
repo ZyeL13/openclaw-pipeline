@@ -1,7 +1,6 @@
 """
 core/orchestrator.py — Pipeline flow manager.
-Pulls jobs from queue, runs workers in sequence, updates status.
-Auto-retry if QC score < threshold (max 2 retries per job).
+Phase 1: Hardened state machine, per-step error isolation, proper retry logic.
 """
 import json
 import shutil
@@ -13,6 +12,7 @@ from datetime import datetime
 
 from core import job_queue as core_queue
 from core.config import OUTPUT_DIR, BASE_DIR, QC_PASS_SCORE
+
 from workers.worker_script import run as run_script
 from workers.worker_visual import run as run_visual
 from workers.worker_voice import run as run_voice
@@ -22,6 +22,7 @@ from workers.worker_qc import run as run_qc
 log = logging.getLogger("orchestrator")
 MAX_RETRIES = 2
 
+# ── HELPERS ────────────────────────────────────────────────────────────────
 def make_run_dir(job_id: str) -> Path:
     ts = datetime.now().strftime("%Y%m%d%H%M%S")
     run_dir = OUTPUT_DIR / f"{ts}_{job_id}"
@@ -45,13 +46,21 @@ def _trigger_kirim(run_dir: Path, job_id: str):
     kirim = BASE_DIR / "kirim.sh"
     if kirim.exists():
         log.info(f"[{job_id}] Sending via kirim.sh...")
-        subprocess.run(["bash", str(kirim), str(run_dir)])
-    else:
-        log.warning(f"[{job_id}] kirim.sh not found at {kirim}")
+        subprocess.run(["bash", str(kirim), str(run_dir)], capture_output=True)
+    else:        log.warning(f"[{job_id}] kirim.sh not found at {kirim}")
+
+# ── MAIN PIPELINE ─────────────────────────────────────────────────────────
 def run_job(job: dict) -> bool:
-    """Execute full pipeline for one job."""
+    """Execute full pipeline for one job with per-step error isolation."""
     job_id = job["id"]
-    headline = job.get("headline") or job.get("brief_human") or job.get("brief_technical") or "No headline"
+    
+    # Safe headline extraction (backward compat)
+    headline = (
+        job.get("headline") or 
+        job.get("brief_human") or 
+        job.get("brief_technical") or 
+        "No headline"
+    )
     lang = job.get("lang", "en")
     retry_count = job.get("retry_count", 0)
 
@@ -59,77 +68,112 @@ def run_job(job: dict) -> bool:
     log.info(f"[{job_id}] lang={lang}  retry={retry_count}/{MAX_RETRIES}")
 
     run_dir = make_run_dir(job_id)
-    core_queue.mark_running(job_id)
-    core_queue.update(job_id, run_dir=str(run_dir))
+    
+    try:
+        # Mark as processing (Phase 1 spec)
+        core_queue.mark_running(job_id)  # sets status="processing"
+        core_queue.update(job_id, run_dir=str(run_dir))
 
-    # STEP 1: SCRIPT
-    log.info(f"[{job_id}] Step 1/5 — script")
-    script_data = run_script(headline=headline, tone=0, run_dir=run_dir)
-    if not script_data:
-        core_queue.mark_failed(job_id, "script generation failed")
-        log.error(f"[{job_id}] FAILED at script")
-        return False
-    core_queue.mark_step(job_id, "script")
-
-    # STEP 2: VISUAL
-    log.info(f"[{job_id}] Step 2/5 — visual")
-    visual_ok = run_visual(script_data=script_data, run_dir=run_dir)
-    if not visual_ok:
-        core_queue.mark_failed(job_id, "visual generation failed")
-        log.error(f"[{job_id}] FAILED at visual")
-        return False
-    core_queue.mark_step(job_id, "visual")
-
-    # STEP 3: VOICE
-    log.info(f"[{job_id}] Step 3/5 — voice")
-    voice_ok = run_voice(script_data=script_data, lang=lang, run_dir=run_dir)
-    if not voice_ok:
-        core_queue.mark_failed(job_id, "voice generation failed")
-        log.error(f"[{job_id}] FAILED at voice")
-        return False
-    core_queue.mark_step(job_id, "voice")
-
-    # STEP 4: EDIT
-    log.info(f"[{job_id}] Step 4/5 — edit")
-    edit_ok = run_edit(script_data=script_data, run_dir=run_dir)
-    if not edit_ok:
-        core_queue.mark_failed(job_id, "video assembly failed")
-        log.error(f"[{job_id}] FAILED at edit")
-        return False
-    core_queue.mark_step(job_id, "edit")
-    # COOLDOWN sebelum QC
-    log.info(f"[{job_id}] Waiting 60s before QC...")
-    time.sleep(60)
-
-    # STEP 5: QC
-    log.info(f"[{job_id}] Step 5/5 — qc")
-    run_qc(run_dir=run_dir)
-    core_queue.mark_step(job_id, "qc", success=True)
-
-    score = _read_qc_score(run_dir)
-    log.info(f"[{job_id}] QC score: {score}/10 (threshold: {QC_PASS_SCORE})")
-
-    # AUTO RETRY jika skor rendah tapi ada output
-    if 0 < score < QC_PASS_SCORE:
-        if retry_count >= MAX_RETRIES:
-            log.warning(f"[{job_id}] Score {score}/10 below threshold after {retry_count} retries — accepting anyway")
-        else:
-            log.warning(f"[{job_id}] Score {score}/10 below threshold — deleting and retrying (attempt {retry_count + 1}/{MAX_RETRIES})")
-            shutil.rmtree(run_dir, ignore_errors=True)
-            core_queue.update(job_id,
-                status="pending",
-                error=f"Score {score}/10 — auto retry {retry_count + 1}",
-                retry_count=retry_count + 1,
-                steps={s: False for s in ["script", "visual", "voice", "edit", "qc"]}
-            )
+        # ── STEP 1: SCRIPT ────────────────────────────────────────────────
+        log.info(f"[{job_id}] Step 1/5 — script")
+        try:
+            script_data = run_script(headline=headline, tone=0, run_dir=run_dir)
+            if not script_data:
+                raise RuntimeError("Script generation returned None")
+            core_queue.mark_step(job_id, "script")
+        except Exception as e:
+            log.error(f"[{job_id}] FAILED at script: {e}")
+            core_queue.mark_failed(job_id, f"script: {e}")
             return False
 
-    # DONE
-    core_queue.mark_done(job_id)
-    log.info(f"[{job_id}] DONE → {run_dir.name}  score={score}/10")
-    _trigger_kirim(run_dir, job_id)
-    return True
+        # ── STEP 2: VISUAL ────────────────────────────────────────────────
+        log.info(f"[{job_id}] Step 2/5 — visual")
+        try:
+            visual_ok = run_visual(script_data=script_data, run_dir=run_dir)
+            if not visual_ok:
+                raise RuntimeError("Visual generation failed")
+            core_queue.mark_step(job_id, "visual")
+        except Exception as e:
+            log.error(f"[{job_id}] FAILED at visual: {e}")
+            core_queue.mark_failed(job_id, f"visual: {e}")
+            return False
+        # ── STEP 3: VOICE ─────────────────────────────────────────────────
+        log.info(f"[{job_id}] Step 3/5 — voice")
+        try:
+            voice_ok = run_voice(script_data=script_data, lang=lang, run_dir=run_dir)
+            if not voice_ok:
+                raise RuntimeError("Voice generation failed")
+            core_queue.mark_step(job_id, "voice")
+        except Exception as e:
+            log.error(f"[{job_id}] FAILED at voice: {e}")
+            core_queue.mark_failed(job_id, f"voice: {e}")
+            return False
 
+        # ── STEP 4: EDIT ──────────────────────────────────────────────────
+        log.info(f"[{job_id}] Step 4/5 — edit")
+        try:
+            edit_ok = run_edit(script_data=script_data, run_dir=run_dir)
+            if not edit_ok:
+                raise RuntimeError("Video assembly failed")
+            core_queue.mark_step(job_id, "edit")
+        except Exception as e:
+            log.error(f"[{job_id}] FAILED at edit: {e}")
+            core_queue.mark_failed(job_id, f"edit: {e}")
+            return False
+
+        # ── COOLDOWN sebelum QC ───────────────────────────────────────────
+        log.info(f"[{job_id}] Waiting 60s before QC...")
+        time.sleep(60)
+
+        # ── STEP 5: QC ────────────────────────────────────────────────────
+        log.info(f"[{job_id}] Step 5/5 — qc")
+        try:
+            run_qc(run_dir=run_dir)
+            core_queue.mark_step(job_id, "qc", success=True)
+        except Exception as e:
+            log.error(f"[{job_id}] FAILED at qc: {e}")
+            core_queue.mark_failed(job_id, f"qc: {e}")
+            return False
+
+        # ── EVALUATE QC SCORE ─────────────────────────────────────────────
+        score = _read_qc_score(run_dir)
+        log.info(f"[{job_id}] QC score: {score}/10 (threshold: {QC_PASS_SCORE})")
+
+        # AUTO RETRY: jika skor rendah tapi ada output (0 < score < threshold)
+        if 0 < score < QC_PASS_SCORE:
+            if retry_count >= MAX_RETRIES:
+                log.warning(
+                    f"[{job_id}] Score {score}/10 below threshold after "
+                    f"{retry_count} retries — accepting anyway"
+                )
+            else:
+                log.warning(
+                    f"[{job_id}] Score {score}/10 below threshold — "
+                    f"deleting and retrying (attempt {retry_count + 1}/{MAX_RETRIES})"
+                )
+                shutil.rmtree(run_dir, ignore_errors=True)
+                core_queue.update(
+                    job_id,
+                    status="pending",
+                    error=f"Score {score}/10 — auto retry {retry_count + 1}",
+                    retry_count=retry_count + 1,
+                    steps={s: False for s in ["script", "visual", "voice", "edit", "qc"]}
+                )
+                return False
+
+        # ── DONE ──────────────────────────────────────────────────────────
+        core_queue.mark_done(job_id)
+        log.info(f"[{job_id}] DONE → {run_dir.name}  score={score}/10")
+        _trigger_kirim(run_dir, job_id)
+        return True
+
+    except Exception as e:
+        # Catch-all for unexpected errors
+        log.exception(f"[{job_id}] UNEXPECTED ERROR: {e}")
+        core_queue.mark_failed(job_id, f"unexpected: {e}")
+        return False
+
+# ── QUEUE PROCESSORS ──────────────────────────────────────────────────────
 def run_next() -> bool:
     """Pull and process the next pending job."""
     job = core_queue.pop_pending()

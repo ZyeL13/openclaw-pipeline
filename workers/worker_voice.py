@@ -33,22 +33,25 @@ def run(script_data: dict, lang: str, run_dir: Path) -> bool:
     """Generate voice MP3 and save to run_dir/voice.mp3."""
     voice_file = run_dir / "voice.mp3"
     
-    # FIX: Build narration string DULU
+    # Build narration string DULU
     narration = build_narration(script_data)
     word_count = len(narration.split())
     
     log.info(f"Generating voice — words={word_count}  voice={TTS_VOICE}")
 
     audio_bytes = None
+    used_voice = TTS_VOICE
+    
     for attempt, voice in enumerate([TTS_VOICE, ALT_VOICE]):
         if attempt > 0:
             log.warning(f"Trying alt voice: {voice}")
             time.sleep(3)
 
         for retry in range(MAX_RETRIES):
-            # FIX: Kirim narration (string), bukan script_data (dict)
+            # Kirim narration (string), bukan script_data (dict)
             audio_bytes = generate(narration, voice=voice)
             if audio_bytes:
+                used_voice = voice
                 break
             log.warning(f"TTS attempt {retry+1}/{MAX_RETRIES} failed")
             time.sleep(5)
@@ -69,7 +72,7 @@ def run(script_data: dict, lang: str, run_dir: Path) -> bool:
 
     log_data = {
         "generated_at": datetime.now().isoformat(),
-        "voice": voice,
+        "voice": used_voice,
         "word_count": word_count,
         "narration_text": narration[:200],
         "output_file": "voice.mp3"
